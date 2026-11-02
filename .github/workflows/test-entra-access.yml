@@ -1,0 +1,37 @@
+name: Test Entra access
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Sign in to Entra using GitHub identity
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.ROTATOR_CLIENT_ID }}
+          tenant-id: ${{ vars.ENTRA_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Read target application
+        shell: bash
+        env:
+          TARGET_APP_OBJECT_ID: ${{ vars.TARGET_APP_OBJECT_ID }}
+        run: |
+          set -euo pipefail
+
+          test -n "$TARGET_APP_OBJECT_ID"
+
+          az rest \
+            --method GET \
+            --url "https://graph.microsoft.com/v1.0/applications/${TARGET_APP_OBJECT_ID}?\$select=displayName,appId" \
+            --query "{Application:displayName,ClientId:appId}" \
+            --output table
